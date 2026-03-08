@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
-import { getDatabase, ref, onValue, increment, update } from "firebase/database";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getDatabase, ref, onValue, increment, update, get, remove, set } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCO1JOjSkvmUoy7VH__zdgdZtaIzRlwbyo",
@@ -17,20 +17,30 @@ const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : get
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
-export const loginWithEmail = (e: string, p: string) => signInWithEmailAndPassword(firebaseAuth, e, p);
-export const registerWithEmail = async (e: string, p: string, name: string) => {
-  const res = await createUserWithEmailAndPassword(firebaseAuth, e, p);
-  await updateProfile(res.user, { displayName: name });
-  return res.user;
-};
 export const logout = () => signOut(firebaseAuth);
 
-export const subscribeToGlobalCount = (callback: (count: number) => void) => {
-  return onValue(ref(firebaseDb, 'global/totalCount'), (snap) => callback(snap.val() || 0));
+// --- פונקציות ניהול ---
+export const checkUserStatus = async (email: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  const snap = await get(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
+  return snap.exists();
 };
 
+export const approveUser = async (email: string, name: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  await set(ref(firebaseDb, `approvedUsers/${cleanEmail}`), { email, name, approvedAt: Date.now() });
+  await remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
+};
+
+export const deleteUser = async (email: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  await remove(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
+  await remove(ref(firebaseDb, `contributions/${cleanEmail}`));
+};
+
+export const resetGlobalCount = () => set(ref(firebaseDb, 'global/totalCount'), 0);
+
 export const updateCount = (email: string, name: string) => {
-  if (!email) return;
   const cleanEmail = email.replace(/\./g, '_');
   const updates: any = {};
   updates['global/totalCount'] = increment(1);
@@ -39,5 +49,3 @@ export const updateCount = (email: string, name: string) => {
   updates[`contributions/${cleanEmail}/email`] = email;
   return update(ref(firebaseDb), updates);
 };
-
-export const getProjectId = () => firebaseConfig.projectId;
