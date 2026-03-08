@@ -4,8 +4,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  updateProfile,
-  onAuthStateChanged 
+  updateProfile 
 } from "firebase/auth";
 import { 
   getDatabase, 
@@ -29,22 +28,21 @@ const firebaseConfig = {
   measurementId: "G-795JXH3PNK"
 };
 
-// אתחול האפליקציה
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
-// --- פונקציות אימות (Auth) ---
+// --- פונקציות אימות ---
 
 export const loginWithEmail = (e: string, p: string) => 
   signInWithEmailAndPassword(firebaseAuth, e, p);
 
-// הפונקציה שהייתה חסרה ב-Export וגרמה לשגיאה:
+// הפונקציה שגרמה לשגיאת ה-Build:
 export const registerWithEmail = async (email: string, pass: string, name: string) => {
   const res = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
   await updateProfile(res.user, { displayName: name });
   
-  // הוספה לרשימת ממתינים לאישור מיד עם ההרשמה
+  // הוספה אוטומטית לרשימת הממתינים לאישור
   const cleanEmail = email.replace(/\./g, '_');
   await set(ref(firebaseDb, `pendingUsers/${cleanEmail}`), {
     email,
@@ -57,7 +55,7 @@ export const registerWithEmail = async (email: string, pass: string, name: strin
 
 export const logout = () => signOut(firebaseAuth);
 
-// --- פונקציות ניהול והרשאות ---
+// --- פונקציות ניהול (Admin) ---
 
 export const checkUserStatus = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
