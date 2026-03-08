@@ -26,8 +26,10 @@ const firebaseConfig = {
 };
 
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const firebaseAuth = getAuth(firebaseApp);
-const firebaseDb = getDatabase(firebaseApp);
+
+// הוספנו export כדי ש-AdminPanel וקבצים אחרים יוכלו למצוא אותם
+export const firebaseAuth = getAuth(firebaseApp);
+export const firebaseDb = getDatabase(firebaseApp);
 
 export const subscribeToConnectionStatus = (callback: (status: string) => void) => {
   const connectedRef = ref(firebaseDb, '.info/connected');
@@ -183,7 +185,19 @@ export const rejectUser = async (email: string) => {
 
 export const getProjectId = () => firebaseConfig.projectId;
 
-// --- תוספת: איפוס מונה אישי למשתמש ---
+// --- תוספות כדי למנוע קריסה של AdminPanel ---
+
+// ה-AdminPanel משתמש ב-resetGlobalCount אז יצרנו קיצור דרך ל-resetAllCounts שלך
+export const resetGlobalCount = resetAllCounts;
+
+// הוספת פונקציית מחיקת משתמש מלאה מהמערכת (כדי שכפתור הפח יעבוד)
+export const deleteUser = async (email: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  await remove(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
+  await remove(ref(firebaseDb, `contributions/${cleanEmail}`));
+};
+
+// הוספת פונקציית איפוס מונה אישי שביקשת קודם
 export const resetUserCount = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   const userRef = ref(firebaseDb, `contributions/${cleanEmail}`);
@@ -192,15 +206,12 @@ export const resetUserCount = async (email: string) => {
   const userData = snapshot.val();
   
   if (userData && userData.count) {
-    // נעדכן את המונה העולמי פחות המונה של המשתמש שאופס
     const globalUpdate: any = {};
     globalUpdate['global/totalCount'] = increment(-userData.count);
     
-    // ונאפס למשתמש את המונה ל-0
     const userUpdate: any = {};
     userUpdate[`contributions/${cleanEmail}/count`] = 0;
     
-    // עדכון מקביל ל-DB
     await update(ref(firebaseDb), globalUpdate);
     await update(ref(firebaseDb), userUpdate);
   }
