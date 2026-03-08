@@ -1,6 +1,22 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { getDatabase, ref, onValue, increment, update, get, remove, set } from "firebase/database";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  updateProfile,
+  onAuthStateChanged 
+} from "firebase/auth";
+import { 
+  getDatabase, 
+  ref, 
+  onValue, 
+  increment, 
+  update, 
+  get, 
+  set, 
+  remove 
+} from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCO1JOjSkvmUoy7VH__zdgdZtaIzRlwbyo",
@@ -13,13 +29,36 @@ const firebaseConfig = {
   measurementId: "G-795JXH3PNK"
 };
 
+// אתחול האפליקציה
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
+// --- פונקציות אימות (Auth) ---
+
+export const loginWithEmail = (e: string, p: string) => 
+  signInWithEmailAndPassword(firebaseAuth, e, p);
+
+// הפונקציה שהייתה חסרה ב-Export וגרמה לשגיאה:
+export const registerWithEmail = async (email: string, pass: string, name: string) => {
+  const res = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
+  await updateProfile(res.user, { displayName: name });
+  
+  // הוספה לרשימת ממתינים לאישור מיד עם ההרשמה
+  const cleanEmail = email.replace(/\./g, '_');
+  await set(ref(firebaseDb, `pendingUsers/${cleanEmail}`), {
+    email,
+    name,
+    createdAt: Date.now()
+  });
+  
+  return res.user;
+};
+
 export const logout = () => signOut(firebaseAuth);
 
-// --- פונקציות ניהול ---
+// --- פונקציות ניהול והרשאות ---
+
 export const checkUserStatus = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   const snap = await get(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
@@ -40,7 +79,10 @@ export const deleteUser = async (email: string) => {
 
 export const resetGlobalCount = () => set(ref(firebaseDb, 'global/totalCount'), 0);
 
+// --- פונקציות נתונים ---
+
 export const updateCount = (email: string, name: string) => {
+  if (!email) return;
   const cleanEmail = email.replace(/\./g, '_');
   const updates: any = {};
   updates['global/totalCount'] = increment(1);
@@ -49,3 +91,5 @@ export const updateCount = (email: string, name: string) => {
   updates[`contributions/${cleanEmail}/email`] = email;
   return update(ref(firebaseDb), updates);
 };
+
+export const getProjectId = () => firebaseConfig.projectId;
