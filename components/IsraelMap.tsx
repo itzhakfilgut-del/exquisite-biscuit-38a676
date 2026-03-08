@@ -1,91 +1,85 @@
-
-import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import { subscribeToContributions } from '../services/firebaseService';
+import React from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { UserContribution } from '../types';
+import L from 'leaflet';
 
-const IsraelMap: React.FC = () => {
-  const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.LayerGroup | null>(null);
-  const [loading, setLoading] = useState(true);
+// תיקון ויזואלי לאייקונים של Leaflet ב-Vite
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-  useEffect(() => {
-    if (!mapRef.current) {
-      mapRef.current = L.map('map', {
-        center: [31.5, 34.9],
-        zoom: 7,
-        zoomControl: false
-      });
+let DefaultIcon = L.icon({
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(mapRef.current);
+interface MapProps {
+  contributions: UserContribution[];
+}
 
-      L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
-      markersRef.current = L.layerGroup().addTo(mapRef.current);
-    }
-
-    const unsubscribe = subscribeToContributions((contributions) => {
-      if (markersRef.current && mapRef.current) {
-        markersRef.current.clearLayers();
-        
-        contributions.forEach(c => {
-          if (c.lat && c.lng) {
-            const customIcon = L.divIcon({
-              className: 'custom-div-icon',
-              html: `
-                <div class="relative group">
-                  <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded-lg shadow-xl border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity z-50">
-                     <p class="text-[9px] font-black text-black whitespace-nowrap">${c.name}</p>
-                  </div>
-                  <div class="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20 scale-150"></div>
-                  <div class="w-8 h-8 rounded-full border-2 border-white shadow-lg overflow-hidden bg-white relative z-10 transition-transform hover:scale-125">
-                    <img src="${c.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + c.email}" class="w-full h-full object-cover" />
-                  </div>
-                  <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 bg-black text-white text-[7px] font-black px-1.5 rounded-full z-20">
-                    ${c.count}
-                  </div>
-                </div>
-              `,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16]
-            });
-
-            L.marker([c.lat, c.lng], { icon: customIcon }).addTo(markersRef.current!);
-          }
-        });
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      unsubscribe();
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
+const IsraelMap: React.FC<MapProps> = ({ contributions = [] }) => {
+  // הגנה: סינון רק של נקודות שיש להן קואורדינטות מספר תקינות
+  const validPoints = (contributions || []).filter(c => 
+    c && 
+    typeof c.lat === 'number' && 
+    typeof c.lng === 'number' && 
+    !isNaN(c.lat) && 
+    !isNaN(c.lng)
+  );
 
   return (
-    <div className="w-full space-y-4 animate-fade-in relative">
-      <div className="flex justify-between items-center mb-2 px-2">
-        <h3 className="text-xl font-black text-gray-800">מפת הפריסה</h3>
-        <div className="flex items-center space-x-2 space-x-reverse">
-          <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">שידור חי</span>
+    <div className="bg-white rounded-[2.5rem] p-3 shadow-2xl shadow-indigo-100 border-4 border-white h-[550px] overflow-hidden relative animate-fade-in group">
+      <MapContainer 
+        center={[31.5, 34.9]} 
+        zoom={7} 
+        scrollWheelZoom={false}
+        style={{ height: '100%', width: '100%', borderRadius: '2rem' }}
+        zoomControl={false} // נבטל כפתורי זום למראה נקי יותר בטלפון
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; OpenStreetMap'
+        />
+        {validPoints.map((point, idx) => (
+          <Marker key={point.email || idx} position={[point.lat!, point.lng!]}>
+            <Popup className="custom-popup">
+              <div className="text-center font-sans p-1 rtl" style={{ direction: 'rtl' }}>
+                <div className="flex items-center gap-2 mb-1 justify-center">
+                   <img 
+                    src={point.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(point.name || 'U')}`} 
+                    className="w-6 h-6 rounded-full border border-indigo-100" 
+                    alt="" 
+                   />
+                   <span className="font-black text-indigo-700">{point.name || 'צדיק'}</span>
+                </div>
+                <div className="bg-indigo-50 text-indigo-600 rounded-lg py-1 px-3 text-xs font-black">
+                  {point.count || 0} מצוות נספרו כאן
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+      
+      {/* שכבת מידע עליונה */}
+      <div className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-md px-5 py-2 rounded-2xl shadow-lg border border-white/50 pointer-events-none">
+        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">תפרוסת ארצית</div>
+        <div className="text-slate-800 font-black flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
+          {validPoints.length} מוקדי עשייה
         </div>
       </div>
-      
-      <div className="relative bg-white p-2 rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-gray-100 border-t-black rounded-full mb-2"></div>
-            <p className="text-[10px] font-black uppercase text-gray-400">טוען נתונים...</p>
+
+      {validPoints.length === 0 && (
+        <div className="absolute inset-0 bg-slate-900/5 backdrop-blur-[1px] flex items-center justify-center z-[1000] pointer-events-none">
+          <div className="bg-white/90 px-6 py-3 rounded-2xl shadow-2xl text-slate-600 font-black border border-white animate-bounce">
+            מחפש מצוות על המפה...
           </div>
-        )}
-        <div id="map" className="h-[450px] w-full"></div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
