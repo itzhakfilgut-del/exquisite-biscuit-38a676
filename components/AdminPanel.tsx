@@ -6,14 +6,13 @@ import {
   deleteUser, 
   resetGlobalCount 
 } from '../services/firebaseService';
-import { Check, Trash2, RotateCcw, Users, ShieldCheck, UserClock } from 'lucide-react';
+import { Check, Trash2, RotateCcw, Users, ShieldCheck, Clock } from 'lucide-react';
 
 const AdminPanel: React.FC = () => {
   const [pending, setPending] = useState<any[]>([]);
   const [approved, setApproved] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // האזנה בזמן אמת למשתמשים ממתינים ומאושרים
   useEffect(() => {
     const pendingRef = ref(firebaseDb, 'pendingUsers');
     const approvedRef = ref(firebaseDb, 'approvedUsers');
@@ -58,7 +57,7 @@ const AdminPanel: React.FC = () => {
       {/* ממתינים לאישור */}
       <div className="bg-white rounded-3xl p-6 shadow-xl border border-amber-100">
         <h3 className="text-lg font-black text-amber-600 mb-4 flex items-center gap-2">
-          <UserClock size={20} />
+          <Clock size={20} />
           ממתינים לאישור ({pending.length})
         </h3>
         
@@ -68,7 +67,7 @@ const AdminPanel: React.FC = () => {
           <div className="space-y-3">
             {pending.map((u) => (
               <div key={u.email} className="flex justify-between items-center bg-amber-50 p-4 rounded-2xl border border-amber-100 transition-all hover:shadow-md">
-                <div className="flex flex-col">
+                <div className="flex flex-col text-right">
                   <span className="font-bold text-slate-800">{u.name || 'ללא שם'}</span>
                   <span className="text-xs text-slate-500">{u.email}</span>
                 </div>
@@ -92,7 +91,7 @@ const AdminPanel: React.FC = () => {
           משתמשים פעילים ({approved.length})
         </h3>
         
-        <div className="space-y-3">
+        <div className="space-y-3 text-right">
           {approved.map((u) => (
             <div key={u.email} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex flex-col">
@@ -124,9 +123,6 @@ const AdminPanel: React.FC = () => {
           <RotateCcw size={20} />
           איפוס המונה העולמי ל-0
         </button>
-        <p className="text-[10px] text-red-400 mt-3 text-center font-bold uppercase tracking-wider">
-          שים לב: איפוס המונה ימחק את כל המצוות שנספרו בעולם עד כה!
-        </p>
       </div>
     </div>
   );
