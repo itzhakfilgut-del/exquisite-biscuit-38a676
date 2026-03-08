@@ -181,5 +181,5 @@ export const rejectUser = async (email: string) => {
   return remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
 };
 
-// השורה שפתרה את השגיאה האחרונה:
+// הפונקציה שהייתה חסרה וגרמה לשגיאת ה-Build:
 export const getProjectId = () => firebaseConfig.projectId;
