@@ -9,11 +9,10 @@ import {
   Clock 
 } from 'lucide-react';
 
-// ייבוא הקומפוננטות לפי השמות המדויקים שציינת
 import Login from './components/Login';
-import IsraelMap from './components/IsraelMap'; // תיקון שם
-import Summary from './components/Summary'; // תיקון שם
-import Counter from './components/Counter'; // תיקון שם
+import IsraelMap from './components/IsraelMap';
+import Summary from './components/Summary';
+import Counter from './components/Counter';
 import MitzvahInsight from './components/MitzvahInsight';
 
 import { User, UserContribution } from './types';
@@ -38,6 +37,7 @@ const App: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // שלב טעינה ראשוני
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -50,6 +50,7 @@ const App: React.FC = () => {
     const unsubscribe = onAuthChange((userData, pending) => {
       setUser(userData);
       setIsPending(pending || false);
+      setIsAuthLoading(false); // סיים לבדוק אימות
 
       if (userData && "geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -110,6 +111,16 @@ const App: React.FC = () => {
     }
   };
 
+  // מניעת מסך לבן בזמן טעינת אימות
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 rtl" style={{ direction: 'rtl' }}>
+        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-bold animate-pulse">מתחבר לשרת...</p>
+      </div>
+    );
+  }
+
   if (isPending) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 rtl" style={{ direction: 'rtl' }}>
@@ -134,6 +145,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-24 rtl" style={{ direction: 'rtl' }}>
+      {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
@@ -161,7 +173,11 @@ const App: React.FC = () => {
           >
             <LogOut size={20} />
           </button>
-          <img src={user.picture} alt={user.name} className="w-9 h-9 rounded-full border-2 border-indigo-100 shadow-sm" />
+          <img 
+            src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name || 'U'}`} 
+            alt={user?.name || 'User'} 
+            className="w-9 h-9 rounded-full border-2 border-indigo-100 shadow-sm object-cover" 
+          />
         </div>
       </header>
 
@@ -169,19 +185,18 @@ const App: React.FC = () => {
         {activeTab === 'counter' && (
           <div className="space-y-6 animate-fade-in text-center">
             <MitzvahInsight />
-            {/* שימוש בקומפוננטת Counter החדשה */}
             <Counter 
                 globalCount={globalCount} 
                 onIncrement={handleIncrement} 
                 isUpdating={isUpdating} 
-                userName={user.name} 
+                userName={user?.name || 'צדיק'} 
             />
           </div>
         )}
 
         {activeTab === 'summary' && (
             <div className="animate-fade-in">
-                <Summary contributions={contributions} currentUserEmail={user.email} />
+                <Summary contributions={contributions} currentUserEmail={user?.email || ''} />
             </div>
         )}
         
@@ -192,6 +207,7 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* Navigation */}
       <nav className="fixed bottom-6 left-6 right-6 bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-3xl p-2 flex justify-around items-center z-50">
         <button
           onClick={() => setActiveTab('counter')}
