@@ -1,50 +1,41 @@
 import React, { useState } from 'react';
-import { loginWithGoogle, loginWithEmail, registerWithEmail } from '../services/firebaseService';
+import { loginWithEmail, registerWithEmail } from '../services/firebaseService';
+import { LogIn, UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
 
-interface LoginProps {}
+interface LoginProps {
+  onLoginSuccess: (user: any) => void;
+}
 
-const Login: React.FC<LoginProps> = () => {
-  const [loading, setLoading] = useState(false);
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [isRegistering, setIsRegistering] = useState(false);
-  const [name, setName] = useState(''); // שדה השם החדש
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     try {
       if (isRegistering) {
-        await registerWithEmail(email, password, name, rememberMe);
+        if (!name.trim()) throw new Error('נא להזין שם מלא');
+        await registerWithEmail(email, password, name);
       } else {
-        await loginWithEmail(email, password, rememberMe);
+        await loginWithEmail(email, password);
       }
     } catch (err: any) {
-      console.error("Auth failed", err);
-      if (err.code === 'auth/email-already-in-use') setError('האימייל הזה כבר רשום במערכת.');
-      else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') setError('אימייל או סיסמה שגויים.');
-      else if (err.code === 'auth/weak-password') setError('הסיסמה חלשה מדי, בחר סיסמה של 6 תווים לפחות.');
-      else setError('אירעה שגיאה. וודא שאתה מחובר לאינטרנט ונסה שוב.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await loginWithGoogle(rememberMe);
-    } catch (e: any) {
-      console.error("Google Login failed", e);
-      if (e.code === 'auth/popup-blocked') {
-        setError("החלון הקופץ של גוגל נחסם. אנא אפשר חלונות קופצים בדפדפן.");
+      console.error(err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('אימייל או סיסמה לא נכונים');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('האימייל הזה כבר רשום במערכת');
+      } else if (err.code === 'auth/weak-password') {
+        setError('הסיסמה חייבת להיות לפחות 6 תווים');
       } else {
-        setError("התחברות עם גוגל נכשלה. נסה שוב.");
+        setError('אירעה שגיאה. נסה שוב מאוחר יותר');
       }
     } finally {
       setLoading(false);
@@ -52,135 +43,110 @@ const Login: React.FC<LoginProps> = () => {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6 bg-white p-8 md:p-10 rounded-[3rem] shadow-2xl border border-gray-100 animate-fade-in max-w-sm mx-auto">
-      
-      {/* כותרת ולוגו */}
-      <div className="text-center space-y-3">
-        <div className="bg-gradient-to-br from-gray-800 to-black w-16 h-16 rounded-[1.5rem] mx-auto flex items-center justify-center shadow-xl transform hover:rotate-12 transition-transform cursor-pointer">
-          <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">KARKAFOT</h2>
-          <p className="text-gray-400 font-medium text-[10px] uppercase tracking-widest mt-1">Real-time Global Counter</p>
-        </div>
-        <p className="text-gray-500 text-xs leading-relaxed px-2">
-          {isRegistering ? 'צרו חשבון חדש כדי להשתתף במונה הקרקפות הגלובלי.' : 'התחברו כדי להשתתף במונה הקרקפות ולראות את הדירוג שלכם.'}
-        </p>
-      </div>
-
-      {/* הודעת שגיאה אדומה */}
-      {error && (
-        <div className="w-full p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center border border-red-100">
-          {error}
-        </div>
-      )}
-
-      {/* טופס התחברות/הרשמה עם אימייל */}
-      <form onSubmit={handleEmailSubmit} className="w-full space-y-3">
-        
-        {/* שדה שם פרטי - מופיע רק בהרשמה */}
-        {isRegistering && (
-          <div>
-            <input 
-              type="text" 
-              placeholder="שם פרטי (יוצג באתר)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all text-right"
-              required
-              disabled={loading}
-            />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 rtl">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in">
+        <div className="p-8">
+          <div className="text-center mb-8">
+            <div className="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200">
+              <LogIn className="text-white w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-800 mb-2">
+              {isRegistering ? 'יצירת חשבון חדש' : 'ברוך הבא למערכת'}
+            </h1>
+            <p className="text-slate-500">נא להזין פרטים כדי להמשיך</p>
           </div>
-        )}
 
-        <div>
-          <input 
-            type="email" 
-            placeholder="אימייל"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all text-left dir-ltr"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div>
-          <input 
-            type="password" 
-            placeholder="סיסמה"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all text-left dir-ltr"
-            required
-            minLength={6}
-            disabled={loading}
-          />
-        </div>
-
-        {/* תיבת סימון "זכור אותי" */}
-        <div className="flex items-center space-x-2 space-x-reverse px-1 pt-1">
-          <input 
-            type="checkbox" 
-            id="rememberMe" 
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
-            disabled={loading}
-          />
-          <label htmlFor="rememberMe" className="text-sm text-gray-600 font-medium cursor-pointer select-none">
-            זכור אותי במחשב זה
-          </label>
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="w-full py-4 px-6 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg active:scale-95 flex items-center justify-center space-x-2 space-x-reverse disabled:opacity-50 text-sm mt-2"
-        >
-          {loading ? (
-            <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
-          ) : (
-            <span>{isRegistering ? 'הרשמה למערכת' : 'התחברות'}</span>
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-r-4 border-red-500 text-red-700 flex items-center gap-3 animate-pulse-slow">
+              <AlertCircle size={20} />
+              <span className="text-sm font-medium">{error}</span>
+            </div>
           )}
-        </button>
-      </form>
 
-      {/* כפתור מעבר בין התחברות להרשמה */}
-      <button 
-        type="button"
-        onClick={() => {
-          setIsRegistering(!isRegistering);
-          setError('');
-        }}
-        className="text-xs text-gray-500 font-bold hover:text-black transition-colors"
-      >
-        {isRegistering ? 'כבר יש לך חשבון? לחץ להתחברות' : 'אין לך חשבון? לחץ להרשמה'}
-      </button>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isRegistering && (
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-slate-700 mr-1">שם מלא</label>
+                <div className="relative">
+                  <User className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                    placeholder="ישראל ישראלי"
+                  />
+                </div>
+              </div>
+            )}
 
-      <div className="w-full flex items-center opacity-40">
-        <div className="flex-1 border-t border-gray-400"></div>
-        <span className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-500">או</span>
-        <div className="flex-1 border-t border-gray-400"></div>
-      </div>
+            <div className="space-y-1">
+              <label className="text-sm font-bold text-slate-700 mr-1">אימייל</label>
+              <div className="relative">
+                <Mail className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                  placeholder="your@email.com"
+                />
+              </div>
+            </div>
 
-      {/* התחברות גוגל עם פופאפ */}
-      <button 
-        type="button"
-        onClick={handleGoogleLogin}
-        disabled={loading}
-        className="w-full py-3.5 px-6 bg-white border-2 border-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center space-x-3 space-x-reverse disabled:opacity-50 text-sm"
-      >
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/0.png" alt="Google" className="w-4 h-4" />
-        <span>המשך עם גוגל</span>
-      </button>
+            <div className="space-y-1">
+              <label className="text-sm font-bold text-slate-700 mr-1">סיסמה</label>
+              <div className="relative">
+                <Lock className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                  placeholder="••••••"
+                />
+              </div>
+            </div>
 
-      {/* קרדיט למטה */}
-      <div className="flex flex-col items-center space-y-2 opacity-40 pt-2">
-        <div className="flex items-center space-x-1 space-x-reverse text-[9px] font-bold text-gray-500">
-           <span>POWERED BY</span>
-           <span className="text-orange-500">FIREBASE</span>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                loading 
+                ? 'bg-slate-400 cursor-not-allowed' 
+                : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-200 active:scale-95'
+              }`}
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : isRegistering ? (
+                <>
+                  <UserPlus size={20} />
+                  צור חשבון והמתן לאישור
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  התחבר למערכת
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+            <button
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError('');
+              }}
+              className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors"
+            >
+              {isRegistering ? 'כבר יש לך חשבון? התחבר כאן' : 'אין לך חשבון? הירשם עכשיו'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
