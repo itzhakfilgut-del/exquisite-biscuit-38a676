@@ -1,54 +1,104 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css'; // חובה להצגת המפה בצורה תקינה
+import React, { useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 
-// תיקון לאייקונים של Leaflet שנעלמים בתהליך ה-Build של Vite
+// ייבוא ה-CSS הכרחי כדי שהמפה לא תיראה מפורקת
+import 'leaflet/dist/leaflet.css';
+
+// פתרון קריטי לבעיית האייקונים הנעלמים ב-Build של Vite/Production
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-let DefaultIcon = L.icon({
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+const DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
+
+// הגדרת האייקון כברירת מחדל לכל המרקרים
 L.Marker.prototype.options.icon = DefaultIcon;
 
-interface MapProps {
-  contributions: any[];
+interface Contribution {
+  email?: string;
+  name?: string;
+  count?: number;
+  lat?: number;
+  lng?: number;
 }
 
-const IsraelMap: React.FC<MapProps> = ({ contributions = [] }) => {
-  // סינון נקודות שיש להן קואורדינטות תקינות בלבד
-  const validPoints = contributions.filter(p => 
-    p && typeof p.lat === 'number' && typeof p.lng === 'number'
-  );
+interface IsraelMapProps {
+  contributions: Contribution[];
+}
+
+const IsraelMap: React.FC<IsraelMapProps> = ({ contributions = [] }) => {
+  
+  // פילטר הגנה: מונע מהמפה לקרוס אם נשלחו נתונים שאינם מספרים או חסרים
+  const validPoints = useMemo(() => {
+    if (!Array.isArray(contributions)) return [];
+    
+    return contributions.filter(p => 
+      p && 
+      typeof p.lat === 'number' && 
+      typeof p.lng === 'number' &&
+      !isNaN(p.lat) && 
+      !isNaN(p.lng) &&
+      p.lat !== 0 && p.lng !== 0 // מונע נקודות שקופצות לאפריקה בגלל 0,0
+    );
+  }, [contributions]);
+
+  // מרכז המפה (ישראל)
+  const mapCenter: [number, number] = [31.5, 34.8];
 
   return (
-    <div className="space-y-4 animate-fade-in" style={{ direction: 'rtl' }}>
-      <div className="bg-white rounded-[2.5rem] p-3 shadow-2xl shadow-indigo-100 border-4 border-white h-[500px] overflow-hidden relative group">
+    <div className="w-full space-y-4 animate-fade-in" style={{ direction: 'rtl' }}>
+      <div className="relative bg-white rounded-[2.5rem] p-2 shadow-2xl border-4 border-white h-[450px] overflow-hidden group">
         
+        {/* בדיקה אם יש בכלל נתונים להצגה */}
+        {validPoints.length === 0 && (
+          <div className="absolute inset-0 z-[1001] bg-slate-50/80 backdrop-blur-sm flex items-center justify-center text-center p-6">
+            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100">
+              <p className="text-slate-500 font-bold">טרם נוספו מצוות עם מיקום גיאוגרפי.</p>
+              <p className="text-xs text-slate-400 mt-2">המיקום מתווסף רק בעת לחיצה על כפתור ה-"+" באישור המשתמש.</p>
+            </div>
+          </div>
+        )}
+
         <MapContainer 
-          center={[31.5, 34.9]} 
+          center={mapCenter} 
           zoom={7} 
-          scrollWheelZoom={false}
+          zoomControl={false} // ביטול כדי להוסיף ידנית בצד הנכון
           style={{ height: '100%', width: '100%', borderRadius: '2rem' }}
+          attributionControl={false} // ניקוי הטקסט למטה לעיצוב נקי
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
           
+          <ZoomControl position="bottomleft" />
+
           {validPoints.map((point, idx) => (
-            <Marker key={point.email || idx} position={[point.lat, point.lng]}>
+            <Marker 
+              key={point.email || `marker-${idx}`} 
+              position={[point.lat!, point.lng!]}
+            >
               <Popup>
-                <div className="text-center font-sans rtl" style={{ direction: 'rtl' }}>
-                  <div className="font-black text-indigo-700 text-sm mb-1">
+                <div className="text-right font-sans p-1" style={{ direction: 'rtl' }}>
+                  <div className="font-black text-indigo-700 text-sm">
                     {point.name || 'צדיק אנונימי'}
                   </div>
-                  <div className="bg-indigo-50 text-indigo-600 rounded-lg py-1 px-3 text-[10px] font-black">
-                    {point.count || 0} מצוות נספרו
+                  <div className="text-slate-500 text-[11px] font-bold mt-1">
+                    צבר {point.count || 0} מצוות
+                  </div>
+                  <div className="mt-2 w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-500" 
+                      style={{ width: `${Math.min((point.count || 0) * 5, 100)}%` }}
+                    ></div>
                   </div>
                 </div>
               </Popup>
@@ -56,26 +106,23 @@ const IsraelMap: React.FC<MapProps> = ({ contributions = [] }) => {
           ))}
         </MapContainer>
 
-        {/* שכבת מידע צפה */}
-        <div className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-white/50">
-          <div className="text-slate-800 font-black flex items-center gap-2 text-sm">
-            <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
-            {validPoints.length} מוקדי פעילות
+        {/* שכבת מידע עליונה */}
+        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-md border border-white/50">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
+            <span className="text-xs font-black text-slate-700">
+              {validPoints.length} נקודות אור בארץ
+            </span>
           </div>
         </div>
-
-        {validPoints.length === 0 && (
-          <div className="absolute inset-0 bg-slate-100/50 backdrop-blur-[1px] flex items-center justify-center z-[1000]">
-            <div className="bg-white px-6 py-3 rounded-2xl shadow-xl text-slate-500 font-bold">
-              מחפש מצוות על המפה...
-            </div>
-          </div>
-        )}
       </div>
-      
-      <p className="text-center text-xs text-slate-400 font-medium">
-        * המפה מציגה משתמשים ששיתפו מיקום בעת הלחיצה
-      </p>
+
+      <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+        <p className="text-[11px] text-indigo-700 leading-relaxed text-center font-medium">
+          💡 <b>טיפ:</b> המפה מציגה רק משתמשים שאישרו גישה למיקום. <br/>
+          ניתן ללחוץ על סמן כדי לראות מי פועל באזור.
+        </p>
+      </div>
     </div>
   );
 };
