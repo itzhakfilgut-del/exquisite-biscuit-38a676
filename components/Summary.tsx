@@ -1,148 +1,82 @@
-import React, { useEffect, useState } from 'react';
-import { subscribeToContributions, deleteContribution, setContributionCount, resetAllCounts } from '../services/firebaseService';
-import { UserContribution, User } from '../types';
-import { ADMIN_EMAIL } from '../constants';
-import { Trash2, Edit2, Check, X, RotateCcw } from 'lucide-react';
-import AdminPanel from './AdminPanel';
+import React from 'react';
+import { UserContribution } from '../types';
+import { Trophy, Medal, Award, Users } from 'lucide-react';
 
 interface SummaryProps {
-  user: User | null;
+  contributions: UserContribution[];
+  currentUserEmail: string;
 }
 
-const Summary: React.FC<SummaryProps> = ({ user }) => {
-  const [contributions, setContributions] = useState<UserContribution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingEmail, setEditingEmail] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<number>(0);
+const Summary: React.FC<SummaryProps> = ({ contributions = [], currentUserEmail }) => {
+  // הגנה: אם אין נתונים עדיין או שהמערכת בטעינה
+  if (!contributions || contributions.length === 0) {
+    return (
+      <div className="bg-white rounded-[2rem] p-12 text-center shadow-xl border border-slate-100 animate-pulse">
+        <Users className="mx-auto text-slate-200 mb-4" size={48} />
+        <p className="text-slate-400 font-black text-xl">טוען את לוח הצדיקים...</p>
+      </div>
+    );
+  }
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
-
-  useEffect(() => {
-    const unsubscribe = subscribeToContributions((data) => {
-      setContributions(data);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleDelete = async (email: string) => {
-    if (window.confirm('האם אתה בטוח שברצונך למחוק רשומה זו?')) {
-      try {
-        await deleteContribution(email);
-      } catch (e) {
-        alert('המחיקה נכשלה. וודא שיש לך הרשאות מתאימות.');
-      }
-    }
-  };
-
-  const handleResetAll = async () => {
-    if (window.confirm('אזהרה: פעולה זו תאפס את כל הלחיצות של כל המשתמשים ואת המונה הגלובלי. האם להמשיך?')) {
-      await resetAllCounts();
-    }
-  };
-
-  const startEdit = (c: UserContribution) => {
-    setEditingEmail(c.email);
-    setEditValue(c.count);
-  };
-
-  const saveEdit = async (email: string) => {
-    await setContributionCount(email, editValue);
-    setEditingEmail(null);
-  };
-
-  if (loading) return (
-    <div className="flex flex-col space-y-3 animate-pulse">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="h-16 bg-gray-200 rounded-2xl w-full"></div>
-      ))}
-    </div>
-  );
+  // מיון לפי כמות (ליתר ביטחון)
+  const sortedContribs = [...contributions].sort((a, b) => (b.count || 0) - (a.count || 0));
 
   return (
-    <div className="w-full space-y-4 animate-fade-in">
-      
-      {/* כאן הוספנו את פאנל הניהול שיופיע רק למנהל! */}
-      {isAdmin && <AdminPanel />}
-
-      <div className="flex justify-between items-end mb-2">
-        <h3 className="text-xl font-black text-gray-800">סיכום פעילות</h3>
-        <div className="flex items-center space-x-3 space-x-reverse">
-          {isAdmin && (
-            <button 
-              onClick={handleResetAll}
-              className="flex items-center space-x-1 space-x-reverse px-2 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-100 hover:bg-red-100 transition-colors"
-            >
-              <RotateCcw size={12} />
-              <span>איפוס הכל</span>
-            </button>
-          )}
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">לפי משתמש</span>
+    <div className="space-y-6 animate-fade-in pb-8" style={{ direction: 'rtl' }}>
+      <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-indigo-100 border border-white">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+            <Trophy className="text-amber-500" size={32} />
+            דירוג המצוות
+          </h2>
+          <span className="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-sm font-black">
+            {contributions.length} משתתפים
+          </span>
+        </div>
+        
+        <div className="space-y-4">
+          {sortedContribs.map((contrib, index) => {
+            const isMe = contrib.email === currentUserEmail;
+            const count = contrib.count || 0;
+            
+            return (
+              <div 
+                key={contrib.email || index} 
+                className={`flex items-center justify-between p-5 rounded-3xl transition-all transform hover:scale-[1.02] ${
+                  isMe ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-[1.03]' : 'bg-slate-50 border border-slate-100'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  {/* מדליות לשלושת המקומות הראשונים */}
+                  <div className="w-8 flex justify-center">
+                    {index === 0 ? <Medal className={isMe ? "text-amber-300" : "text-amber-500"} size={28} /> : 
+                     index === 1 ? <Medal className={isMe ? "text-slate-200" : "text-slate-400"} size={26} /> :
+                     index === 2 ? <Award className={isMe ? "text-orange-200" : "text-orange-700"} size={24} /> : 
+                     <span className={`font-black ${isMe ? 'text-indigo-200' : 'text-slate-300'}`}>{index + 1}</span>}
+                  </div>
+                  
+                  <img 
+                    src={contrib.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(contrib.name || 'U')}&background=random`} 
+                    className="w-12 h-12 rounded-2xl bg-white shadow-sm object-cover border-2 border-white/20"
+                    alt=""
+                  />
+                  
+                  <div>
+                    <div className={`font-black text-lg leading-tight ${isMe ? 'text-white' : 'text-slate-800'}`}>
+                      {contrib.name || 'צדיק אנונימי'}
+                    </div>
+                    {isMe && <div className="text-[10px] font-bold opacity-80">זה החשבון שלך</div>}
+                  </div>
+                </div>
+                
+                <div className={`text-2xl font-black tabular-nums ${isMe ? 'text-white' : 'text-indigo-600'}`}>
+                  {count.toLocaleString()}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-      
-      {contributions.length === 0 ? (
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 text-center text-gray-400 italic">
-          אין נתונים עדיין... היה הראשון לספור!
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {contributions.map((c, idx) => (
-            <div 
-              key={c.email} 
-              className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center space-x-3 space-x-reverse">
-                <div className="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">
-                  {idx + 1}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-gray-800">{c.name}</span>
-                  <span className="text-[10px] text-gray-400">{c.email}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2 space-x-reverse">
-                {isAdmin && (
-                  <div className="flex items-center space-x-1 space-x-reverse mr-2">
-                    {editingEmail === c.email ? (
-                      <>
-                        <input 
-                          type="number" 
-                          value={editValue}
-                          onChange={(e) => setEditValue(parseInt(e.target.value) || 0)}
-                          className="w-16 px-2 py-1 text-xs border rounded bg-gray-50 font-bold"
-                        />
-                        <button onClick={() => saveEdit(c.email)} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => setEditingEmail(null)} className="p-1 text-red-600 hover:bg-red-50 rounded">
-                          <X size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => startEdit(c)} title="ערוך" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => setContributionCount(c.email, 0)} title="אפס משתמש" className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
-                          <RotateCcw size={14} />
-                        </button>
-                        <button onClick={() => handleDelete(c.email)} title="מחק" className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-                <div className="bg-black text-white px-4 py-1 rounded-full text-sm font-black">
-                  {c.count}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
