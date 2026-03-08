@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
-import { getDatabase, ref, increment, update } from "firebase/database";
+import { getDatabase, ref, onValue, increment, update } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCO1JOjSkvmUoy7VH__zdgdZtaIzRlwbyo",
@@ -14,20 +14,20 @@ const firebaseConfig = {
 };
 
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
-// שים לב לייצוא (export) המדויק כאן:
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
 export const loginWithEmail = (e: string, p: string) => signInWithEmailAndPassword(firebaseAuth, e, p);
-
 export const registerWithEmail = async (e: string, p: string, name: string) => {
   const res = await createUserWithEmailAndPassword(firebaseAuth, e, p);
   await updateProfile(res.user, { displayName: name });
   return res.user;
 };
-
 export const logout = () => signOut(firebaseAuth);
+
+export const subscribeToGlobalCount = (callback: (count: number) => void) => {
+  return onValue(ref(firebaseDb, 'global/totalCount'), (snap) => callback(snap.val() || 0));
+};
 
 export const updateCount = (email: string, name: string) => {
   if (!email) return;
