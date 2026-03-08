@@ -1,9 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { subscribeToContributions, deleteContribution, setContributionCount, resetAllCounts } from '../services/firebaseService';
 import { UserContribution, User } from '../types';
 import { ADMIN_EMAIL } from '../constants';
 import { Trash2, Edit2, Check, X, RotateCcw } from 'lucide-react';
+import AdminPanel from './AdminPanel';
 
 interface SummaryProps {
   user: User | null;
@@ -61,6 +61,10 @@ const Summary: React.FC<SummaryProps> = ({ user }) => {
 
   return (
     <div className="w-full space-y-4 animate-fade-in">
+      
+      {/* כאן הוספנו את פאנל הניהול שיופיע רק למנהל! */}
+      {isAdmin && <AdminPanel />}
+
       <div className="flex justify-between items-end mb-2">
         <h3 className="text-xl font-black text-gray-800">סיכום פעילות</h3>
         <div className="flex items-center space-x-3 space-x-reverse">
