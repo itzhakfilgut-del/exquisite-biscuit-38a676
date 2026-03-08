@@ -13,7 +13,7 @@ import {
 } from "firebase/auth";
 import { getDatabase, ref, onValue, increment, update, remove, get } from "firebase/database";
 import { UserContribution } from "../types";
-import { ADMIN_EMAIL } from '../constants'; // <-- הוספנו את המייל שלך לכאן
+import { ADMIN_EMAIL } from '../constants';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCO1JOjSkvmUoy7VH__zdgdZtaIzRlwbyo",
@@ -73,7 +73,7 @@ export const logout = async () => {
 export const onAuthChange = (callback: (user: any | null, isPendingApproval?: boolean) => void) => {
   return firebaseAuth.onAuthStateChanged(async (user: any) => {
     if (user) {
-      const cleanEmail = user.email.replace(/\./g, '_');
+      const cleanEmail = user.email ? user.email.replace(/\./g, '_') : user.uid;
       const approvedRef = ref(firebaseDb, `approvedUsers/${cleanEmail}`);
       
       try {
@@ -81,6 +81,7 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
         const isApproved = snapshot.val();
 
         if (isApproved === true || user.email === ADMIN_EMAIL) {
+          // המשתמש מאושר או שהוא מנהל
           callback({
             uid: user.uid,
             name: user.displayName || user.email?.split('@')[0] || 'משתמש',
@@ -88,7 +89,10 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
             picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.charAt(0) || 'U'}&background=random`
           });
         } else {
-          // שמירת המשתמש בתיקיית הממתינים כדי שהמנהל יראה אותו
+          // קודם כל מציגים למשתמש את מסך ההמתנה באופן מיידי
+          callback(null, true);
+
+          // ואז מנסים לשמור אותו ברשימת הממתינים למנהל
           const pendingRef = ref(firebaseDb, `pendingUsers/${cleanEmail}`);
           await update(pendingRef, {
             email: user.email,
@@ -96,12 +100,11 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
             picture: user.photoURL || '',
             requestDate: Date.now()
           });
-
-          callback(null, true);
         }
       } catch (error) {
         console.error("Error checking approval status:", error);
-        callback(null, false);
+        // השארת המשתמש במסך ההמתנה גם במקרה של שגיאת הרשאות במסד הנתונים
+        callback(null, true);
       }
     } else {
       callback(null, false);
@@ -180,8 +183,6 @@ export const resetAllCounts = async () => {
   return update(ref(firebaseDb), updates);
 };
 
-// --- פונקציות חדשות לניהול משתמשים ---
-
 export const subscribeToPendingUsers = (callback: (users: any[]) => void) => {
   return onValue(ref(firebaseDb, 'pendingUsers'), (snap) => {
     const data = snap.val() || {};
@@ -193,7 +194,7 @@ export const approveUser = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   const updates: any = {};
   updates[`approvedUsers/${cleanEmail}`] = true;
-  updates[`pendingUsers/${cleanEmail}`] = null; // מחיקה מרשימת הממתינים
+  updates[`pendingUsers/${cleanEmail}`] = null; 
   return update(ref(firebaseDb), updates);
 };
 
