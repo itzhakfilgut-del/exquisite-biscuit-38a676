@@ -1,67 +1,62 @@
-import React, { useEffect, useState } from 'react';
-import { subscribeToPendingUsers, approveUser, rejectUser } from '../services/firebaseService';
+import React, { useState, useEffect } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { firebaseDb, approveUser, deleteUser, resetGlobalCount } from '../services/firebaseService';
+import { Check, Trash2, RotateCcw, Users } from 'lucide-react';
 
-const AdminPanel: React.FC = () => {
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+const AdminPanel = () => {
+  const [pending, setPending] = useState<any[]>([]);
+  const [approved, setApproved] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToPendingUsers((users) => {
-      setPendingUsers(users);
-    });
-    return () => unsubscribe();
+    onValue(ref(firebaseDb, 'pendingUsers'), (s) => setPending(Object.values(s.val() || {})));
+    onValue(ref(firebaseDb, 'approvedUsers'), (s) => setApproved(Object.values(s.val() || {})));
   }, []);
 
-  if (pendingUsers.length === 0) {
-    return (
-      <div className="bg-green-50 p-4 rounded-2xl border border-green-100 text-center shadow-sm mb-6">
-        <p className="text-green-700 text-sm font-bold">אין משתמשים הממתינים לאישור כרגע. 🎉</p>
-      </div>
-    );
-  }
+  const handleReset = () => {
+    if (window.confirm("האם אתה בטוח שברצונך לאפס את המונה הגלובלי ל-0?")) {
+      resetGlobalCount();
+    }
+  };
 
   return (
-    <div className="bg-orange-50 p-6 rounded-2xl border border-orange-200 shadow-sm space-y-4 mb-6 animate-fade-in rtl">
-      <div className="flex items-center space-x-2 space-x-reverse mb-2">
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-        </span>
-        <h3 className="text-lg font-black text-orange-800">פאנל ניהול: בקשות הצטרפות</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {pendingUsers.map((user, idx) => (
-          <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl border border-orange-100 shadow-sm">
-            <div className="flex items-center space-x-3 space-x-reverse">
-              {user.picture ? (
-                <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full border border-gray-200" />
-              ) : (
-                <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold">
-                  {user.name.charAt(0)}
-                </div>
-              )}
-              <div className="flex flex-col text-right">
-                <span className="text-sm font-bold text-gray-900">{user.name}</span>
-                <span className="text-[10px] text-gray-500">{user.email}</span>
+    <div className="space-y-6 animate-fade-in" style={{ direction: 'rtl' }}>
+      <div className="bg-white rounded-3xl p-6 shadow-xl border border-amber-100">
+        <h2 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">
+          <Users className="text-indigo-600" /> ניהול משתמשים
+        </h2>
+        
+        {/* ממתינים לאישור */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-amber-600 mb-3 tracking-wide">ממתינים לאישור ({pending.length})</h3>
+          <div className="space-y-2">
+            {pending.map(u => (
+              <div key={u.email} className="flex justify-between items-center bg-amber-50 p-3 rounded-2xl border border-amber-100">
+                <span className="text-sm font-bold text-slate-700">{u.name || u.email}</span>
+                <button onClick={() => approveUser(u.email, u.name)} className="bg-white text-green-600 p-2 rounded-xl shadow-sm hover:bg-green-50"><Check size={18}/></button>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <button
-                onClick={() => approveUser(user.email)}
-                className="px-4 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition-colors shadow-sm"
-              >
-                אשר גישה
-              </button>
-              <button
-                onClick={() => rejectUser(user.email)}
-                className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors border border-red-100"
-              >
-                דחה
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* מאושרים */}
+        <div>
+          <h3 className="text-sm font-bold text-indigo-600 mb-3 tracking-wide">משתמשים פעילים ({approved.length})</h3>
+          <div className="space-y-2">
+            {approved.map(u => (
+              <div key={u.email} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <span className="text-sm text-slate-600">{u.name || u.email}</span>
+                <button onClick={() => deleteUser(u.email)} className="text-red-400 hover:text-red-600 p-2 transition-colors"><Trash2 size={18}/></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-red-50 rounded-3xl p-6 border border-red-100 shadow-sm">
+        <h3 className="text-red-700 font-bold mb-2">אזור מסוכן</h3>
+        <button onClick={handleReset} className="w-full bg-white text-red-600 font-bold py-3 rounded-2xl shadow-sm flex items-center justify-center gap-2 hover:bg-red-50 transition-all">
+          <RotateCcw size={18} /> איפוס מונה גלובלי
+        </button>
       </div>
     </div>
   );
