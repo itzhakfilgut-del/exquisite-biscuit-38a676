@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// שים לב: ייבוא רק של מה שקיים בשירות המעודכן
 import { loginWithEmail, registerWithEmail } from '../services/firebaseService';
 import { LogIn, UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
 
@@ -26,16 +27,20 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       } else {
         await loginWithEmail(email, password);
       }
+      // אם הגענו לכאן, סימן שהפעולה הצליחה (או עברה למצב המתנה שמנוהל ב-onAuthChange)
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('אימייל או סיסמה לא נכונים');
+      console.error("Auth Error:", err);
+      // טיפול בשגיאות נפוצות של Firebase
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError('פרטי התחברות שגויים. בדוק את האימייל והסיסמה.');
       } else if (err.code === 'auth/email-already-in-use') {
-        setError('האימייל הזה כבר רשום במערכת');
+        setError('כתובת האימייל הזו כבר רשומה במערכת.');
       } else if (err.code === 'auth/weak-password') {
-        setError('הסיסמה חייבת להיות לפחות 6 תווים');
+        setError('הסיסמה חלשה מדי. בחר לפחות 6 תווים.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('התחברות באימייל כבויה ב-Firebase. יש להפעיל אותה ב-Console.');
       } else {
-        setError('אירעה שגיאה. נסה שוב מאוחר יותר');
+        setError('שגיאה בהתחברות: ' + (err.message || 'נסה שוב מאוחר יותר'));
       }
     } finally {
       setLoading(false);
@@ -43,70 +48,70 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 rtl">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 rtl" style={{ direction: 'rtl' }}>
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in border border-slate-100">
         <div className="p-8">
-          <div className="text-center mb-8">
-            <div className="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200">
-              <LogIn className="text-white w-8 h-8" />
+          <div className="text-center mb-10">
+            <div className="bg-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100 rotate-3">
+              <LogIn className="text-white w-10 h-10 -rotate-3" />
             </div>
-            <h1 className="text-2xl font-black text-slate-800 mb-2">
-              {isRegistering ? 'יצירת חשבון חדש' : 'ברוך הבא למערכת'}
+            <h1 className="text-3xl font-black text-slate-800 mb-2">
+              {isRegistering ? 'מצטרפים למהפכה' : 'כניסת משתמשים'}
             </h1>
-            <p className="text-slate-500">נא להזין פרטים כדי להמשיך</p>
+            <p className="text-slate-500 font-medium">הכניסו פרטים כדי להתקדם</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-r-4 border-red-500 text-red-700 flex items-center gap-3 animate-pulse-slow">
-              <AlertCircle size={20} />
-              <span className="text-sm font-medium">{error}</span>
+            <div className="mb-6 p-4 bg-red-50 border-r-4 border-red-500 text-red-700 flex items-center gap-3 rounded-l-lg animate-pulse-slow">
+              <AlertCircle size={20} className="shrink-0" />
+              <span className="text-sm font-bold">{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {isRegistering && (
-              <div className="space-y-1">
-                <label className="text-sm font-bold text-slate-700 mr-1">שם מלא</label>
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700 block pr-1">שם מלא</label>
                 <div className="relative">
-                  <User className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white transition-all outline-none text-right font-medium"
                     placeholder="ישראל ישראלי"
                   />
                 </div>
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-sm font-bold text-slate-700 mr-1">אימייל</label>
+            <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700 block pr-1">אימייל</label>
               <div className="relative">
-                <Mail className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                  placeholder="your@email.com"
+                  className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white transition-all outline-none text-right font-medium"
+                  placeholder="name@example.com"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-bold text-slate-700 mr-1">סיסמה</label>
+            <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700 block pr-1">סיסמה</label>
               <div className="relative">
-                <Lock className="absolute right-3 top-3.5 text-slate-400" size={18} />
+                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                  placeholder="••••••"
+                  className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white transition-all outline-none text-right font-medium"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
@@ -114,37 +119,40 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+              className={`w-full py-4 rounded-2xl font-black text-lg text-white shadow-xl transition-all flex items-center justify-center gap-3 ${
                 loading 
-                ? 'bg-slate-400 cursor-not-allowed' 
-                : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-200 active:scale-95'
+                ? 'bg-slate-400 cursor-wait' 
+                : 'bg-indigo-600 hover:bg-indigo-700 hover:-translate-y-1 active:scale-95 shadow-indigo-200'
               }`}
             >
               {loading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : isRegistering ? (
                 <>
-                  <UserPlus size={20} />
-                  צור חשבון והמתן לאישור
+                  <UserPlus size={22} />
+                  הרשמה והמתנה לאישור
                 </>
               ) : (
                 <>
-                  <LogIn size={20} />
-                  התחבר למערכת
+                  <LogIn size={22} />
+                  התחברות למערכת
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+            <p className="text-slate-500 mb-2">
+              {isRegistering ? 'כבר יש לך חשבון?' : 'עדיין לא רשום?'}
+            </p>
             <button
               onClick={() => {
                 setIsRegistering(!isRegistering);
                 setError('');
               }}
-              className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors"
+              className="text-indigo-600 text-lg font-black hover:text-indigo-800 transition-colors underline decoration-indigo-200 underline-offset-8"
             >
-              {isRegistering ? 'כבר יש לך חשבון? התחבר כאן' : 'אין לך חשבון? הירשם עכשיו'}
+              {isRegistering ? 'חזור למסך הכניסה' : 'צור חשבון חדש עכשיו'}
             </button>
           </div>
         </div>
