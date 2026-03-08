@@ -181,5 +181,27 @@ export const rejectUser = async (email: string) => {
   return remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
 };
 
-// הפונקציה שהייתה חסרה וגרמה לשגיאת ה-Build:
 export const getProjectId = () => firebaseConfig.projectId;
+
+// --- תוספת: איפוס מונה אישי למשתמש ---
+export const resetUserCount = async (email: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  const userRef = ref(firebaseDb, `contributions/${cleanEmail}`);
+  
+  const snapshot = await get(userRef);
+  const userData = snapshot.val();
+  
+  if (userData && userData.count) {
+    // נעדכן את המונה העולמי פחות המונה של המשתמש שאופס
+    const globalUpdate: any = {};
+    globalUpdate['global/totalCount'] = increment(-userData.count);
+    
+    // ונאפס למשתמש את המונה ל-0
+    const userUpdate: any = {};
+    userUpdate[`contributions/${cleanEmail}/count`] = 0;
+    
+    // עדכון מקביל ל-DB
+    await update(ref(firebaseDb), globalUpdate);
+    await update(ref(firebaseDb), userUpdate);
+  }
+};
