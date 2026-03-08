@@ -18,40 +18,37 @@ export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
 export const loginWithEmail = (e: string, p: string) => signInWithEmailAndPassword(firebaseAuth, e, p);
-
-export const registerWithEmail = async (email: string, pass: string, name: string) => {
-  const res = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
-  await updateProfile(res.user, { displayName: name });
-  const cleanEmail = email.replace(/\./g, '_');
-  await set(ref(firebaseDb, `pendingUsers/${cleanEmail}`), { email, name, createdAt: Date.now() });
-  return res.user;
-};
-
 export const logout = () => signOut(firebaseAuth);
 
+// בדיקה אם משתמש מאושר
 export const checkUserStatus = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   const snap = await get(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
   return snap.exists();
 };
 
+// אישור משתמש
 export const approveUser = async (email: string, name: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   await set(ref(firebaseDb, `approvedUsers/${cleanEmail}`), { email, name, approvedAt: Date.now() });
   await remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
 };
 
+// מחיקת משתמש לגמרי
 export const deleteUser = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   await remove(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
   await remove(ref(firebaseDb, `contributions/${cleanEmail}`));
 };
 
+// --- הפונקציה שחיפשת: איפוס מונה אישי ---
 export const resetUserCount = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
-  return update(ref(firebaseDb, `contributions/${cleanEmail}`), { count: 0 });
+  // אנחנו קובעים את הערך ל-0 ישירות
+  return set(ref(firebaseDb, `contributions/${cleanEmail}/count`), 0);
 };
 
+// איפוס כללי (מונה עולמי + מחיקת כל הדירוג)
 export const resetGlobalCount = async () => {
   const updates: any = {};
   updates['global/totalCount'] = 0;
@@ -59,6 +56,7 @@ export const resetGlobalCount = async () => {
   return update(ref(firebaseDb), updates);
 };
 
+// עדכון מונה (לחיצה על הפלוס)
 export const updateCount = (email: string, name: string) => {
   if (!email) return;
   const cleanEmail = email.replace(/\./g, '_');
@@ -68,8 +66,4 @@ export const updateCount = (email: string, name: string) => {
   updates[`contributions/${cleanEmail}/name`] = name;
   updates[`contributions/${cleanEmail}/email`] = email;
   return update(ref(firebaseDb), updates);
-};
-
-export const subscribeToGlobalCount = (callback: (count: number) => void) => {
-  return onValue(ref(firebaseDb, 'global/totalCount'), (snap) => callback(snap.val() || 0));
 };
