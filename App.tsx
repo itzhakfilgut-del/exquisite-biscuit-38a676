@@ -9,7 +9,7 @@ import { firebaseAuth, firebaseDb, logout, updateCount, checkUserStatus } from '
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 
-const ADMIN_EMAIL = "your-email@gmail.com"; // שים כאן את המייל שלך!
+const ADMIN_EMAIL = "itzhakfilgut@gmail.com"; // שים כאן את המייל שלך!
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
