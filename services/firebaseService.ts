@@ -28,16 +28,16 @@ const firebaseConfig = {
   measurementId: "G-795JXH3PNK"
 };
 
+// אתחול Firebase
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb = getDatabase(firebaseApp);
 
-// --- פונקציות אימות ---
+// --- פונקציות אימות (Auth) ---
 
 export const loginWithEmail = (e: string, p: string) => 
   signInWithEmailAndPassword(firebaseAuth, e, p);
 
-// הפונקציה שגרמה לשגיאת ה-Build:
 export const registerWithEmail = async (email: string, pass: string, name: string) => {
   const res = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
   await updateProfile(res.user, { displayName: name });
@@ -71,13 +71,26 @@ export const approveUser = async (email: string, name: string) => {
 
 export const deleteUser = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
+  // מוחק מהרשימה המאושרת וגם מהדירוג
   await remove(ref(firebaseDb, `approvedUsers/${cleanEmail}`));
   await remove(ref(firebaseDb, `contributions/${cleanEmail}`));
 };
 
-export const resetGlobalCount = () => set(ref(firebaseDb, 'global/totalCount'), 0);
+// איפוס מונה אישי למשתמש (משאיר אותו במערכת אבל מאפס לו את הנקודות)
+export const resetUserCount = async (email: string) => {
+  const cleanEmail = email.replace(/\./g, '_');
+  return update(ref(firebaseDb, `contributions/${cleanEmail}`), { count: 0 });
+};
 
-// --- פונקציות נתונים ---
+// איפוס כללי: מאפס את המונה העולמי ומוחק את כל הדירוגים והנקודות על המפה
+export const resetGlobalCount = async () => {
+  const updates: any = {};
+  updates['global/totalCount'] = 0;
+  updates['contributions'] = null; // מוחק את כל נתוני המשתמשים בדירוג ובמפה
+  return update(ref(firebaseDb), updates);
+};
+
+// --- פונקציות נתונים ועדכון ---
 
 export const updateCount = (email: string, name: string) => {
   if (!email) return;
@@ -87,7 +100,14 @@ export const updateCount = (email: string, name: string) => {
   updates[`contributions/${cleanEmail}/count`] = increment(1);
   updates[`contributions/${cleanEmail}/name`] = name;
   updates[`contributions/${cleanEmail}/email`] = email;
+  
+  // כאן אפשר להוסיף לוגיקה לשמירת מיקום אם תרצה להחזיר אותה בעתיד
   return update(ref(firebaseDb), updates);
 };
 
 export const getProjectId = () => firebaseConfig.projectId;
+
+// האזנה למונה הגלובלי (עבור ה-Counter)
+export const subscribeToGlobalCount = (callback: (count: number) => void) => {
+  return onValue(ref(firebaseDb, 'global/totalCount'), (snap) => callback(snap.val() || 0));
+};
