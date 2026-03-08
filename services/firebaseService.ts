@@ -1,15 +1,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence
+  browserSessionPersistence,
+  onAuthStateChanged
 } from "firebase/auth";
 import { getDatabase, ref, onValue, increment, update, remove, get } from "firebase/database";
 import { UserContribution } from "../types";
@@ -29,7 +28,6 @@ const firebaseConfig = {
 const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const firebaseAuth = getAuth(firebaseApp);
 const firebaseDb = getDatabase(firebaseApp);
-const googleProvider = new GoogleAuthProvider();
 
 export const subscribeToConnectionStatus = (callback: (status: string) => void) => {
   const connectedRef = ref(firebaseDb, '.info/connected');
@@ -43,15 +41,7 @@ const applyPersistence = async (rememberMe: boolean) => {
   await setPersistence(firebaseAuth, persistenceType);
 };
 
-export const loginWithGoogle = async (rememberMe: boolean = true) => {
-  try {
-    await applyPersistence(rememberMe);
-    await signInWithPopup(firebaseAuth, googleProvider);
-  } catch (error) {
-    console.error("Error signing in with Google", error);
-    throw error;
-  }
-};
+// הסרנו את פונקציית ההתחברות עם גוגל
 
 export const registerWithEmail = async (email: string, password: string, name: string, rememberMe: boolean = true) => {
   await applyPersistence(rememberMe);
@@ -71,7 +61,7 @@ export const logout = async () => {
 };
 
 export const onAuthChange = (callback: (user: any | null, isPendingApproval?: boolean) => void) => {
-  return firebaseAuth.onAuthStateChanged(async (user: any) => {
+  return onAuthStateChanged(firebaseAuth, async (user: any) => {
     if (user) {
       const cleanEmail = user.email ? user.email.replace(/\./g, '_') : user.uid;
       const approvedRef = ref(firebaseDb, `approvedUsers/${cleanEmail}`);
@@ -81,7 +71,6 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
         const isApproved = snapshot.val();
 
         if (isApproved === true || user.email === ADMIN_EMAIL) {
-          // המשתמש מאושר או שהוא מנהל
           callback({
             uid: user.uid,
             name: user.displayName || user.email?.split('@')[0] || 'משתמש',
@@ -89,10 +78,10 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
             picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.charAt(0) || 'U'}&background=random`
           });
         } else {
-          // קודם כל מציגים למשתמש את מסך ההמתנה באופן מיידי
+          // מציגים מסך המתנה
           callback(null, true);
 
-          // ואז מנסים לשמור אותו ברשימת הממתינים למנהל
+          // שומרים ברשימת הממתינים
           const pendingRef = ref(firebaseDb, `pendingUsers/${cleanEmail}`);
           await update(pendingRef, {
             email: user.email,
@@ -103,7 +92,6 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
         }
       } catch (error) {
         console.error("Error checking approval status:", error);
-        // השארת המשתמש במסך ההמתנה גם במקרה של שגיאת הרשאות במסד הנתונים
         callback(null, true);
       }
     } else {
@@ -202,5 +190,3 @@ export const rejectUser = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   return remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
 };
-
-export const getProjectId = () => firebaseConfig.projectId;
