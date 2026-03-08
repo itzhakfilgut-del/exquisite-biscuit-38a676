@@ -1,0 +1,7 @@
+{
+  "name": "Mitzvah Counter",
+  "description": "A simple and elegant counter featuring a Tefillin icon with real-time Israel map.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
