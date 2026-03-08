@@ -41,8 +41,6 @@ const applyPersistence = async (rememberMe: boolean) => {
   await setPersistence(firebaseAuth, persistenceType);
 };
 
-// הסרנו את פונקציית ההתחברות עם גוגל
-
 export const registerWithEmail = async (email: string, password: string, name: string, rememberMe: boolean = true) => {
   await applyPersistence(rememberMe);
   const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
@@ -78,10 +76,7 @@ export const onAuthChange = (callback: (user: any | null, isPendingApproval?: bo
             picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.charAt(0) || 'U'}&background=random`
           });
         } else {
-          // מציגים מסך המתנה
           callback(null, true);
-
-          // שומרים ברשימת הממתינים
           const pendingRef = ref(firebaseDb, `pendingUsers/${cleanEmail}`);
           await update(pendingRef, {
             email: user.email,
@@ -129,17 +124,14 @@ export const updateCount = async (email: string, name: string, lat?: number, lng
 export const deleteContribution = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   const userRef = ref(firebaseDb, `contributions/${cleanEmail}`);
-  
   try {
     const snapshot = await get(userRef);
     const userData = snapshot.val();
-    
     if (userData && userData.count) {
       const globalUpdate: any = {};
       globalUpdate['global/totalCount'] = increment(-userData.count);
       await update(ref(firebaseDb), globalUpdate);
     }
-    
     await remove(userRef);
     return true;
   } catch (error) {
@@ -151,10 +143,8 @@ export const deleteContribution = async (email: string) => {
 export const setContributionCount = async (email: string, newCount: number) => {
   const cleanEmail = email.replace(/\./g, '_');
   const userRef = ref(firebaseDb, `contributions/${cleanEmail}`);
-  
   const snapshot = await get(userRef);
   const userData = snapshot.val();
-  
   if (userData) {
     const diff = newCount - userData.count;
     const updates: any = {};
@@ -190,3 +180,6 @@ export const rejectUser = async (email: string) => {
   const cleanEmail = email.replace(/\./g, '_');
   return remove(ref(firebaseDb, `pendingUsers/${cleanEmail}`));
 };
+
+// השורה שפתרה את השגיאה האחרונה:
+export const getProjectId = () => firebaseConfig.projectId;
