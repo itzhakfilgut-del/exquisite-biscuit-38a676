@@ -8,14 +8,17 @@ import {
   CheckCircle2, 
   Clock 
 } from 'lucide-react';
+
+// ייבוא הקומפוננטות לפי השמות המדויקים שציינת
 import Login from './components/Login';
-import MitzvahMap from './components/MitzvahMap';
-import StatsSummary from './components/StatsSummary';
+import IsraelMap from './components/IsraelMap'; // תיקון שם
+import Summary from './components/Summary'; // תיקון שם
+import Counter from './components/Counter'; // תיקון שם
 import MitzvahInsight from './components/MitzvahInsight';
+
 import { User, UserContribution } from './types';
 import { 
   subscribeToConnectionStatus, 
-  getProjectId, 
   onAuthChange, 
   logout, 
   updateCount,
@@ -36,7 +39,6 @@ const App: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 1. האזנה למצב התקנה (PWA)
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -44,13 +46,11 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // 2. ניהול אימות משתמש ובקשת מיקום מוקדמת
   useEffect(() => {
     const unsubscribe = onAuthChange((userData, pending) => {
       setUser(userData);
       setIsPending(pending || false);
 
-      // בקשת מיקום מיד עם ההתחברות כדי למנוע עיכוב בלחיצה הראשונה
       if (userData && "geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
@@ -93,11 +93,9 @@ const App: React.FC = () => {
       }
     };
 
-    // אם כבר יש מיקום שמור - נשתמש בו מיד
     if (userLocation) {
       await performUpdate(userLocation.lat, userLocation.lng);
     } else {
-      // אם אין מיקום, נבקש ונבצע את העדכון מיד כשמתקבל (פותר את הלחיצה הראשונה)
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -105,7 +103,6 @@ const App: React.FC = () => {
           await performUpdate(coords.lat, coords.lng);
         },
         async () => {
-          // גם אם המשתמש סירב, נספור את הלחיצה
           await performUpdate();
         },
         { timeout: 5000 }
@@ -117,8 +114,8 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 rtl" style={{ direction: 'rtl' }}>
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center animate-fade-in">
-          <div className="bg-amber-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Clock className="text-amber-600 w-10 h-10 animate-spin-slow" />
+          <div className="bg-amber-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-600">
+             <Clock className="w-10 h-10 animate-spin-slow" />
           </div>
           <h1 className="text-2xl font-black text-slate-800 mb-4">ההרשמה התקבלה!</h1>
           <p className="text-slate-600 leading-relaxed mb-6">
@@ -137,7 +134,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-24 rtl" style={{ direction: 'rtl' }}>
-      {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
@@ -171,39 +167,31 @@ const App: React.FC = () => {
 
       <main className="max-w-lg mx-auto p-6">
         {activeTab === 'counter' && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-6 animate-fade-in text-center">
             <MitzvahInsight />
-            
-            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100 p-10 text-center border border-white relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600/10"></div>
-              <h2 className="text-slate-400 font-bold text-sm mb-2">סך המצוות העולמי</h2>
-              <div className="text-7xl font-black text-indigo-600 mb-8 tracking-tighter tabular-nums">
-                {globalCount.toLocaleString()}
-              </div>
-              
-              <button
-                onClick={handleIncrement}
-                disabled={isUpdating}
-                className={`w-40 h-40 rounded-full mx-auto flex items-center justify-center transition-all shadow-2xl relative group ${
-                  isUpdating 
-                  ? 'bg-slate-200 scale-95' 
-                  : 'bg-indigo-600 hover:bg-indigo-700 active:scale-90 hover:shadow-indigo-300'
-                }`}
-              >
-                <Plus className={`text-white w-20 h-20 transition-transform ${isUpdating ? 'animate-ping' : 'group-hover:rotate-90'}`} strokeWidth={3} />
-                {isUpdating && <div className="absolute inset-0 border-4 border-white border-t-transparent rounded-full animate-spin"></div>}
-              </button>
-              
-              <p className="mt-8 text-slate-500 font-medium">שלום {user.name}, לחץ כדי להוסיף מצווה!</p>
-            </div>
+            {/* שימוש בקומפוננטת Counter החדשה */}
+            <Counter 
+                globalCount={globalCount} 
+                onIncrement={handleIncrement} 
+                isUpdating={isUpdating} 
+                userName={user.name} 
+            />
           </div>
         )}
 
-        {activeTab === 'summary' && <StatsSummary contributions={contributions} currentUserEmail={user.email} />}
-        {activeTab === 'map' && <MitzvahMap contributions={contributions} />}
+        {activeTab === 'summary' && (
+            <div className="animate-fade-in">
+                <Summary contributions={contributions} currentUserEmail={user.email} />
+            </div>
+        )}
+        
+        {activeTab === 'map' && (
+            <div className="animate-fade-in">
+                <IsraelMap contributions={contributions} />
+            </div>
+        )}
       </main>
 
-      {/* Navigation */}
       <nav className="fixed bottom-6 left-6 right-6 bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-3xl p-2 flex justify-around items-center z-50">
         <button
           onClick={() => setActiveTab('counter')}
